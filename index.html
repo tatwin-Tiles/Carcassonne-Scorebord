@@ -832,9 +832,13 @@ header .divider{
   .addbar input[type=text]{width:140px;}
 }
 
-/* ---- iPad: verklein het hele hoofdscherm met 15% ---- */
+/* ---- iPad: verklein het hele hoofdscherm ---- */
 @media (min-width:768px) and (max-width:1024px){
   .wrap{ zoom:0.7225; }
+}
+@media (orientation:landscape) and (min-width:768px) and (max-height:1024px){
+  .wrap{ zoom:0.7225; }
+  body{ padding:16px 20px 24px; }
 }
 </style>
 </head>
