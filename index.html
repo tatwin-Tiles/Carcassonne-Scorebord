@@ -254,11 +254,11 @@ header .divider{
   row-gap:4.4px;
   flex-wrap:wrap;
   margin:0 auto 10px;
-  max-width:704px;
+  max-width:860px;
 }
 .settings-col{
   text-align:left;
-  min-width:220px;
+  min-width:280px;
   background:rgba(201,162,75,0.06);
   border:1px solid var(--line);
   border-radius:8px;
@@ -273,7 +273,7 @@ header .divider{
   opacity:0.85;
   margin-bottom:8px;
 }
-.settingsRow .checkrow{justify-content:flex-start; margin-bottom:6.6px; color:var(--parchment-dim); font-size:15.7px;}
+.settingsRow .checkrow{justify-content:flex-start; margin-bottom:6.6px; color:var(--parchment-dim); font-size:15.7px; white-space:nowrap;}
 .settingsRow .checkrow input{
   appearance:none;
   -webkit-appearance:none;
@@ -839,8 +839,9 @@ header .divider{
 @media (orientation:landscape) and (min-width:768px) and (max-height:1024px){
   .wrap{ zoom:0.7225; }
   body{ padding:16px 20px 24px; }
-  .settings-cols{ flex-wrap:nowrap; }
-  .settings-col{ min-width:0; flex:1 1 0; }
+  .settings-cols{ flex-wrap:nowrap; max-width:none; width:100%; }
+  .settings-col{ min-width:0; flex:1 1 50%; }
+  .settingsRow .checkrow{ white-space:nowrap; }
 }
 </style>
 </head>
