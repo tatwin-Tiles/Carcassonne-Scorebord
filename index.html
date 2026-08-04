@@ -463,12 +463,51 @@ header .divider{
   min-width:0;
 }
 .pname:focus{outline:1px solid var(--gold-dim); border-radius:3px;}
-.crown-badge{
+.trophy-badge{
   flex:none;
-  font-size:15px;
-  line-height:1;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:17px; height:17px;
+  cursor:pointer;
   filter:drop-shadow(0 1px 1px rgba(0,0,0,0.35));
 }
+.trophy-badge svg{width:100%; height:100%; display:block;}
+.trophy-badge:hover{transform:scale(1.12);}
+.trophy-bubble{
+  position:fixed;
+  z-index:300;
+  background:var(--parchment);
+  color:var(--ink);
+  border:1px solid rgba(0,0,0,0.25);
+  border-radius:8px;
+  padding:8px 12px;
+  font-size:12px;
+  line-height:1.4;
+  text-align:center;
+  box-shadow:0 6px 18px rgba(0,0,0,0.4);
+  max-width:220px;
+  pointer-events:none;
+}
+.trophy-bubble strong{
+  display:block;
+  font-family:'Cinzel', serif;
+  font-size:12px;
+  margin-bottom:2px;
+  color:var(--ink);
+}
+.trophy-bubble::after{
+  content:"";
+  position:absolute;
+  left:var(--arrow-left, 50%);
+  width:10px; height:10px;
+  background:var(--parchment);
+  border-right:1px solid rgba(0,0,0,0.25);
+  border-bottom:1px solid rgba(0,0,0,0.25);
+  transform:translateX(-50%) rotate(45deg);
+}
+.trophy-bubble.arrow-top::after{ top:-6px; transform:translateX(-50%) rotate(225deg); }
+.trophy-bubble.arrow-bottom::after{ bottom:-6px; transform:translateX(-50%) rotate(45deg); }
 .removeX{
   background:none;border:none;cursor:pointer;
   color:var(--ink-soft); font-size:16px; line-height:1; padding:2px 4px;
@@ -572,7 +611,7 @@ header .divider{
   .meeple-dot{ width:19.4px; height:19.4px; border-width:1.5px; }
   .pname{ font-size:13.3px; }
   .removeX{ font-size:12px; padding:1px 2px; }
-  .crown-badge{ font-size:11px; }
+  .trophy-badge{ width:13px; height:13px; }
   .score{ font-size:22px; }
   .score-row{ margin:6px 0 6px; gap:6px; }
   .card-actions{ gap:4px; margin-bottom:5px; }
@@ -1017,34 +1056,112 @@ const COLORS = {
 const STORAGE_KEY = 'carcassonne-current-game';
 const STORAGE_KEY_HISTORY = 'carcassonne-game-history';
 let gameHistory = [];
-let recordHolderName = null;
 
-function computeRecordHolder(){
+let recordHighestScore = { value:null, names:new Set() };
+let recordLongestRoad = { value:null, names:new Set() };
+let recordLargestCity = { value:null, names:new Set() };
+let lastGameWinners = new Set();
+
+function normName(n){ return String(n||'').trim().toLowerCase(); }
+
+function computeRecordSet(getValue){
   let best = -Infinity;
-  let bestName = null;
   gameHistory.forEach(g=>{
     (g.players||[]).forEach(p=>{
-      if(p && typeof p.score === 'number' && !isNaN(p.score) && p.score > best){
-        best = p.score;
-        bestName = p.name;
-      }
+      const v = getValue(p);
+      if(typeof v === 'number' && !isNaN(v) && v > best) best = v;
     });
   });
-  return bestName;
+  if(best === -Infinity) return { value:null, names:new Set() };
+  const names = new Set();
+  gameHistory.forEach(g=>{
+    (g.players||[]).forEach(p=>{
+      const v = getValue(p);
+      if(v === best) names.add(normName(p.name));
+    });
+  });
+  return { value:best, names };
 }
 
 function refreshRecordHolder(){
-  recordHolderName = computeRecordHolder();
+  recordHighestScore = computeRecordSet(p=> typeof p.score === 'number' ? p.score : NaN);
+  recordLongestRoad = computeRecordSet(p=> (typeof p.maxRoad === 'number' && p.maxRoad > 0) ? p.maxRoad : NaN);
+  recordLargestCity = computeRecordSet(p=> (typeof p.maxCity === 'number' && p.maxCity > 0) ? p.maxCity : NaN);
+  lastGameWinners = new Set((gameHistory.length ? (gameHistory[0].winners||[]) : []).map(normName));
 }
 
-function isRecordHolder(name){
-  if(!recordHolderName || !name) return false;
-  return String(name).trim().toLowerCase() === recordHolderName.trim().toLowerCase();
+const TROPHY_SVG = {
+  gold: `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path fill="#e0b654" stroke="rgba(0,0,0,0.4)" stroke-width="0.6" d="M7 3h10v2h3v2a5 5 0 0 1-5 4.58c-.53 1.5-1.72 2.68-3.2 3.16V17h2.7v2H9.5v-2h2.7v-2.26c-1.48-.48-2.67-1.66-3.2-3.16A5 5 0 0 1 4 7V5h3V3zm0 4H5.6A3 3 0 0 0 8 9.7 8.8 8.8 0 0 1 7 7zm10 0a8.8 8.8 0 0 1-1 2.7A3 3 0 0 0 18.4 7H17z"/></svg>`,
+  silver: `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path fill="#c7ccd1" stroke="rgba(0,0,0,0.4)" stroke-width="0.6" d="M7 3h10v2h3v2a5 5 0 0 1-5 4.58c-.53 1.5-1.72 2.68-3.2 3.16V17h2.7v2H9.5v-2h2.7v-2.26c-1.48-.48-2.67-1.66-3.2-3.16A5 5 0 0 1 4 7V5h3V3zm0 4H5.6A3 3 0 0 0 8 9.7 8.8 8.8 0 0 1 7 7zm10 0a8.8 8.8 0 0 1-1 2.7A3 3 0 0 0 18.4 7H17z"/></svg>`
+};
+
+function getTrophies(name){
+  if(!name) return [];
+  const key = normName(name);
+  const trophies = [];
+  if(recordHighestScore.value !== null && recordHighestScore.names.has(key)){
+    trophies.push({ type:'gold', title:'Hoogste score ooit', detail:`${recordHighestScore.value} punten` });
+  }
+  if(lastGameWinners.has(key)){
+    trophies.push({ type:'silver', title:'Laatste potje gewonnen', detail:'' });
+  }
+  if(recordLongestRoad.value !== null && recordLongestRoad.names.has(key)){
+    trophies.push({ type:'silver', title:'Langste weg ooit', detail:`${recordLongestRoad.value} tegels` });
+  }
+  if(recordLargestCity.value !== null && recordLargestCity.names.has(key)){
+    trophies.push({ type:'silver', title:'Grootste stad ooit', detail:`${recordLargestCity.value} tegels/wapens` });
+  }
+  return trophies;
 }
 
 function crownBadge(name){
-  return isRecordHolder(name) ? '<span class="crown-badge" title="Hoogste score ooit behaald">👑</span>' : '';
+  const trophies = getTrophies(name);
+  if(!trophies.length) return '';
+  return trophies.map(t=>`<span class="trophy-badge ${t.type}" data-trophy-title="${escapeAttr(t.title)}" data-trophy-detail="${escapeAttr(t.detail)}">${TROPHY_SVG[t.type]}</span>`).join('');
 }
+
+let trophyBubbleEl = null;
+function hideTrophyBubble(){
+  if(trophyBubbleEl){ trophyBubbleEl.remove(); trophyBubbleEl = null; }
+}
+function showTrophyBubble(badge){
+  hideTrophyBubble();
+  const title = badge.dataset.trophyTitle || '';
+  const detail = badge.dataset.trophyDetail || '';
+  const bubble = document.createElement('div');
+  bubble.className = 'trophy-bubble';
+  bubble.innerHTML = `<strong>${escapeAttr(title)}</strong>${detail ? `<span>${escapeAttr(detail)}</span>` : ''}`;
+  document.body.appendChild(bubble);
+  const rect = badge.getBoundingClientRect();
+  const bw = bubble.offsetWidth, bh = bubble.offsetHeight;
+  let left = rect.left + rect.width/2 - bw/2;
+  left = Math.max(8, Math.min(left, window.innerWidth - bw - 8));
+  let top = rect.top - bh - 10;
+  let arrowBelow = false;
+  if(top < 8){ top = rect.bottom + 10; arrowBelow = true; }
+  bubble.style.left = left + 'px';
+  bubble.style.top = top + 'px';
+  bubble.classList.add(arrowBelow ? 'arrow-top' : 'arrow-bottom');
+  const arrowLeft = Math.max(10, Math.min(rect.left + rect.width/2 - left, bw - 10));
+  bubble.style.setProperty('--arrow-left', arrowLeft + 'px');
+  trophyBubbleEl = bubble;
+}
+document.addEventListener('click', e=>{
+  const badge = e.target.closest('.trophy-badge');
+  if(badge){
+    e.stopPropagation();
+    if(trophyBubbleEl && trophyBubbleEl.dataset.forBadge === badge.dataset.trophyTitle+'|'+badge.dataset.trophyDetail && trophyBubbleEl._badge === badge){
+      hideTrophyBubble();
+    } else {
+      showTrophyBubble(badge);
+      trophyBubbleEl._badge = badge;
+    }
+  } else if(trophyBubbleEl && !e.target.closest('.trophy-bubble')){
+    hideTrophyBubble();
+  }
+});
+window.addEventListener('scroll', hideTrophyBubble, true);
+window.addEventListener('resize', hideTrophyBubble);
 
 const DEFAULT_SETTINGS = { innsCathedrals: false, traders: false, princessDragon: false, abbeyMayor: false, kingRobber: false, tower: false, abbot: false, river: false, siege: false, castles: false, shepherds: false, circus: false, planes: false, news: false, ferries: false, goldmines: false, wizardWitch: false, robbers: false };
 const EXPANSION_META = [
@@ -1308,7 +1425,9 @@ function sanitizePlayer(p, i){
     color: (p && COLORS[p.color]) ? p.color : 'red',
     score: (p && typeof p.score === 'number' && !isNaN(p.score)) ? p.score : 0,
     history: (p && Array.isArray(p.history)) ? p.history.filter(h => h && typeof h.amount === 'number') : [],
-    goods: sanitizeGoods(p && p.goods)
+    goods: sanitizeGoods(p && p.goods),
+    maxRoad: (p && typeof p.maxRoad === 'number' && !isNaN(p.maxRoad) && p.maxRoad >= 0) ? p.maxRoad : 0,
+    maxCity: (p && typeof p.maxCity === 'number' && !isNaN(p.maxCity) && p.maxCity >= 0) ? p.maxCity : 0
   };
 }
 
@@ -1471,7 +1590,7 @@ async function saveGameHistory(){
 }
 
 function recordFinishedGame(photo){
-  const playersSnapshot = state.players.map(p=>({ name: p.name, color: p.color, score: p.score }));
+  const playersSnapshot = state.players.map(p=>({ name: p.name, color: p.color, score: p.score, maxRoad: p.maxRoad||0, maxCity: p.maxCity||0 }));
   if(playersSnapshot.length===0) return;
   const maxScore = Math.max(...playersSnapshot.map(p=>p.score));
   const winners = playersSnapshot.filter(p=>p.score===maxScore).map(p=>p.name);
@@ -1498,7 +1617,7 @@ function addPlayer(){
     if(usedColors().has(color)){ showToast('Die kleur is al gekozen door een andere speler.'); return; }
     const newPlayer = {
       id: 'p' + Date.now() + Math.random().toString(36).slice(2,6),
-      name, color, score: 0, history: [], goods: { wijn:0, graan:0, stof:0 }
+      name, color, score: 0, history: [], goods: { wijn:0, graan:0, stof:0 }, maxRoad: 0, maxCity: 0
     };
     state.players.push(newPlayer);
     lastAddedId = newPlayer.id;
@@ -2374,6 +2493,17 @@ function renderModal(){
       const {points, formula} = calcPoints();
       const label = getVisibleTabs().find(t=>t.key===activeTab).label;
       addHistory(p, Math.round(points), label + (points!==0 ? ` (${formula})` : ''));
+      if(activeTab==='weg'){
+        const tegelsEl = document.getElementById('f_wegtegels');
+        const tegels = tegelsEl ? (parseFloat(tegelsEl.value)||0) : 0;
+        p.maxRoad = Math.max(p.maxRoad||0, tegels);
+      } else if(activeTab==='stad'){
+        const tegelsEl = document.getElementById('f_stadtegels');
+        const wapensEl = document.getElementById('f_wapens');
+        const tegels = tegelsEl ? (parseFloat(tegelsEl.value)||0) : 0;
+        const wapens = wapensEl ? (parseFloat(wapensEl.value)||0) : 0;
+        p.maxCity = Math.max(p.maxCity||0, tegels+wapens);
+      }
       render(); saveState(); closeModal();
     });
   }
