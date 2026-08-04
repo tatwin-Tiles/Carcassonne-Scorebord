@@ -369,17 +369,25 @@ header .divider{
   opacity:0.85;
   margin-bottom:10px;
 }
+#playersList{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+}
 .player-row{
   display:flex;
   align-items:center;
-  gap:12px;
-  padding:9px 2px;
-  border-bottom:1px solid rgba(201,162,75,0.15);
+  gap:8px;
+  padding:8px 10px;
+  background:rgba(201,162,75,0.08);
+  border:1px solid rgba(201,162,75,0.2);
+  border-radius:20px;
 }
-.player-row:last-child{border-bottom:none;}
 .player-row .meeple-dot{width:26px; height:26px; flex:none;}
 .player-row .pname{
-  flex:1;
+  flex:none;
+  width:auto;
+  max-width:110px;
   background:transparent;
   border:none;
   color:var(--parchment);
@@ -822,6 +830,11 @@ header .divider{
 @media (max-width:480px){
   .score{font-size:36px;}
   .addbar input[type=text]{width:140px;}
+}
+
+/* ---- iPad: verklein het hele hoofdscherm met 15% ---- */
+@media (min-width:768px) and (max-width:1024px){
+  .wrap{ zoom:0.85; }
 }
 </style>
 </head>
@@ -1470,7 +1483,7 @@ function recordFinishedGame(photo){
 function addPlayer(){
   try{
     const name = els.newName.value.trim() || 'Speler ' + (state.players.length+1);
-    if(state.players.length >= 8){ showToast('Maximaal 8 spelers.'); return; }
+    if(state.players.length >= 6){ showToast('Maximaal 6 spelers.'); return; }
     if(state.players.length >= Object.keys(COLORS).length){ showToast('Alle kleuren zijn al in gebruik.'); return; }
     const color = els.colorSelect.value || nextAvailableColor();
     if(usedColors().has(color)){ showToast('Die kleur is al gekozen door een andere speler.'); return; }
@@ -1845,8 +1858,8 @@ function render(){
       const row = document.createElement('div');
       row.className = 'player-row';
       row.innerHTML = `
-        <div class="meeple-dot" title="${c.label}">${meepleSvg(c.hex)}</div>
         <input class="pname" value="${escapeAttr(p.name)}" maxlength="20" data-id="${p.id}">
+        <div class="meeple-dot" title="${c.label}">${meepleSvg(c.hex)}</div>
         ${crownBadge(p.name)}
         <button class="removeX" data-remove="${p.id}" title="Speler verwijderen">✕</button>
       `;
