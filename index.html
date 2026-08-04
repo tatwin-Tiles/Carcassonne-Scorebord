@@ -340,6 +340,11 @@ header .divider{
   margin:0 0 14px;
 }
 .start-row{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:14px;
+  flex-wrap:wrap;
   text-align:center;
   margin:28px 0 8px;
 }
@@ -818,36 +823,6 @@ header .divider{
   .score{font-size:36px;}
   .addbar input[type=text]{width:140px;}
 }
-
-/* ---- iPad: schaal het hele hoofdschema kleiner en zet het scorebord op 4 kolommen,
-   zodat 4 spelers in één rij passen zonder te hoeven scrollen ---- */
-@media (min-width:768px) and (max-width:1200px){
-  .wrap{ zoom:0.78; }
-  .grid{ grid-template-columns:repeat(4, 1fr); gap:8px; }
-  .card{ padding:7px 7px 6px; border-radius:5px; }
-  .card::before{ inset:3px; border-radius:3px; }
-  .card-top{ margin-bottom:2px; gap:4px; }
-  .meeple-dot{ width:16px; height:16px; border-width:1.5px; }
-  .pname{ font-size:11px; }
-  .removeX{ font-size:10px; padding:1px 2px; }
-  .crown-badge{ font-size:9px; }
-  .score{ font-size:18px; }
-  .score-row{ margin:4px 0 5px; gap:5px; }
-  .card-actions{ gap:3px; margin-bottom:4px; }
-  .card-actions .btn{ height:20px; padding:2px 4px; font-size:7.5px; border-radius:4px; border-width:1.5px; }
-  .history{ max-height:38px; font-size:7px; padding-top:3px; gap:1px; }
-  .undo-row{ margin-top:3px; }
-  .undo-row .btn{ padding:2px 5px; font-size:7.5px; }
-  .goods-tile{ gap:4px; margin:0 0 3px; }
-  .goods-mini-val{ font-size:7.5px; min-width:9px; }
-  .goods-mini-icon{ width:11px; height:11px; }
-  .goods-mini-icon .goods-shield{ font-size:5px; }
-}
-@supports not (zoom:1){
-  @media (min-width:768px) and (max-width:1200px){
-    .wrap{ transform:scale(0.78); transform-origin:top center; width:128.2051%; margin-left:-14.1025%; }
-  }
-}
 </style>
 </head>
 <body>
@@ -877,9 +852,11 @@ header .divider{
       <button class="btn" id="addPlayerBtn">+ Speler toevoegen</button>
     </div>
 
-    <div class="statsbar">
-      <button class="btn ghost" id="statsBtn">Statistieken</button>
+    <div class="players-box" id="playersBox" style="display:none;">
+      <div class="players-box-title">Spelers</div>
+      <div id="playersList"></div>
     </div>
+    <div class="empty-state" id="emptyState">Nog geen spelers. Voeg hierboven je medespelers toe om te beginnen.</div>
 
     <div class="settingsRow" id="settingsRow">
       <div class="settings-cols">
@@ -992,19 +969,15 @@ header .divider{
 
   <div id="roadContainer"></div>
   <div class="grid-heading" id="gridHeading" style="display:none;"></div>
-  <div class="players-box" id="playersBox" style="display:none;">
-    <div class="players-box-title">Spelers</div>
-    <div id="playersList"></div>
-  </div>
   <div class="grid" id="playerGrid"></div>
-  <div class="empty-state" id="emptyState">Nog geen spelers. Voeg hierboven je medespelers toe om te beginnen.</div>
 
   <div class="start-row" id="startRow">
+    <button class="btn ghost" id="statsBtn">Statistieken</button>
     <button class="btn timer-start" id="startGameBtn">Start spel</button>
   </div>
 
-  <div style="text-align:center; margin-top:40px; font-size:10px; color:var(--parchment-dim); opacity:0.35;">versie 17</div>
-  <div style="text-align:center; margin-top:6px; font-size:11px; color:var(--parchment-dim); opacity:0.5;">© Edwin Stevens</div>
+  <div style="text-align:center; margin-top:40px; font-size:10px; color:var(--parchment-dim); opacity:0.35;">versie 1.1</div>
+  <div style="text-align:center; margin-top:6px; font-size:11px; color:var(--parchment-dim); opacity:0.5;">© Tatwin-Tiles</div>
 </div>
 
 <div id="modalRoot"></div>
@@ -2567,36 +2540,6 @@ function computeLeaderboard(){
   return Object.values(map).sort((a,b)=> b.wins - a.wins || (b.totalScore/b.games) - (a.totalScore/a.games));
 }
 
-async function removePlayerFromStats(rawName){
-  const trimmed = (rawName || '').trim();
-  if(!trimmed) return;
-  const key = trimmed.toLowerCase();
-  const stillExists = gameHistory.some(g => (g.players||[]).some(p => p.name.trim().toLowerCase() === key));
-  if(!stillExists) return;
-  if(!(await showConfirm(`Alle statistieken van "${escapeAttr(trimmed)}" verwijderen? Dit haalt deze speler uit alle opgeslagen spellen en kan niet ongedaan worden gemaakt.`))) return;
-
-  gameHistory = gameHistory
-    .map(g=>{
-      const remainingPlayers = (g.players||[]).filter(p => p.name.trim().toLowerCase() !== key);
-      if(remainingPlayers.length === 0) return null;
-      const oldWinners = g.winners || [];
-      const survivingWinners = oldWinners.filter(w => remainingPlayers.some(p => p.name.trim().toLowerCase() === w.trim().toLowerCase()));
-      let winners = survivingWinners;
-      if(winners.length === 0){
-        const maxScore = Math.max(...remainingPlayers.map(p => p.score));
-        winners = remainingPlayers.filter(p => p.score === maxScore).map(p => p.name);
-      }
-      return { ...g, players: remainingPlayers, winners };
-    })
-    .filter(Boolean);
-
-  await saveGameHistory();
-  refreshRecordHolder();
-  renderStatsModal();
-  render();
-  showToast(`Statistieken van ${trimmed} verwijderd.`);
-}
-
 async function clearHistory(){
   if(!(await showConfirm('Alle opgeslagen statistieken wissen? Dit kan niet ongedaan worden gemaakt.'))) return;
   gameHistory = [];
@@ -2624,7 +2567,7 @@ function renderStatsModal(){
 
   const leaderboardHtml = leaderboard.length ? `
     <table class="stats-table">
-      <thead><tr><th>Speler</th><th>Gespeeld</th><th>Gewonnen</th><th>Gem. score</th><th>Beste score</th><th></th></tr></thead>
+      <thead><tr><th>Speler</th><th>Gespeeld</th><th>Gewonnen</th><th>Gem. score</th><th>Beste score</th></tr></thead>
       <tbody>
         ${leaderboard.map(m=>`
           <tr>
@@ -2633,7 +2576,6 @@ function renderStatsModal(){
             <td>${m.wins}</td>
             <td>${Math.round(m.totalScore/m.games)}</td>
             <td>${m.best}</td>
-            <td><button type="button" class="btn danger small" data-removeplayer="${escapeAttr(m.name)}" title="Verwijder deze speler uit de statistieken">✕</button></td>
           </tr>
         `).join('')}
       </tbody>
@@ -2683,9 +2625,6 @@ function renderStatsModal(){
   });
   document.getElementById('closeStatsBtn').addEventListener('click', closeStats);
   document.getElementById('clearStatsBtn').addEventListener('click', clearHistory);
-  document.querySelectorAll('[data-removeplayer]').forEach(b=>{
-    b.addEventListener('click', e=> removePlayerFromStats(e.currentTarget.dataset.removeplayer));
-  });
 }
 
 els.addPlayerBtn.addEventListener('click', addPlayer);
