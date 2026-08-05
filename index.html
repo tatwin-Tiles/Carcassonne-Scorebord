@@ -1660,16 +1660,17 @@ function recordFinishedGame(photo){
       if(cloudId){
         record.cloudId = cloudId;
         saveGameHistory();
-        showToast('Online opgeslagen ✓ (id: ' + cloudId.slice(0,6) + ')');
+        alert('CLOUD DEBUG: Online opgeslagen ✓ (id: ' + cloudId + ')');
       } else {
-        showToast('Online opslaan mislukt (zie console)');
+        const errMsg = window.__lastCloudError ? (window.__lastCloudError.message || String(window.__lastCloudError)) : 'onbekende reden';
+        alert('CLOUD DEBUG: Online opslaan mislukt — ' + errMsg);
       }
     }).catch(err=>{
       console.error('Cloud opslaan gaf een fout', err);
-      showToast('Online opslaan gaf een fout: ' + (err && err.message ? err.message : err));
+      alert('CLOUD DEBUG: Online opslaan gaf een fout: ' + (err && err.message ? err.message : String(err)));
     });
   } else {
-    showToast('Cloud-functie niet beschikbaar (Firebase niet geladen)');
+    alert('CLOUD DEBUG: Cloud-functie niet beschikbaar (window.cloudSaveGame bestaat niet — Firebase-script is niet geladen)');
   }
 }
 
@@ -2899,6 +2900,7 @@ loadState();
       return docRef.id;
     }catch(e){
       console.error("Cloud opslaan mislukt", e);
+      window.__lastCloudError = e;
       return null;
     }
   };
@@ -2910,11 +2912,13 @@ loadState();
       return snap.docs.map(d => ({ id: d.id, cloudId: d.id, ...d.data() }));
     }catch(e){
       console.error("Cloud laden mislukt", e);
+      window.__lastCloudError = e;
       return [];
     }
   };
 
   window.dispatchEvent(new Event('firebase-ready'));
+  alert('CLOUD DEBUG: Firebase-script is geladen en klaar.');
 </script>
 </body>
 </html>
