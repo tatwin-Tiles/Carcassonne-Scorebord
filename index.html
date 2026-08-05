@@ -1657,8 +1657,19 @@ function recordFinishedGame(photo){
   saveGameHistory();
   if(window.cloudSaveGame){
     window.cloudSaveGame(record).then(cloudId=>{
-      if(cloudId){ record.cloudId = cloudId; saveGameHistory(); }
+      if(cloudId){
+        record.cloudId = cloudId;
+        saveGameHistory();
+        showToast('Online opgeslagen ✓ (id: ' + cloudId.slice(0,6) + ')');
+      } else {
+        showToast('Online opslaan mislukt (zie console)');
+      }
+    }).catch(err=>{
+      console.error('Cloud opslaan gaf een fout', err);
+      showToast('Online opslaan gaf een fout: ' + (err && err.message ? err.message : err));
     });
+  } else {
+    showToast('Cloud-functie niet beschikbaar (Firebase niet geladen)');
   }
 }
 
