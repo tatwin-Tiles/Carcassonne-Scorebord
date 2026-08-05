@@ -1495,6 +1495,55 @@ async function loadState(){
   }
   refreshRecordHolder();
   render();
+
+  // Cloud-ranglijst ophalen en samenvoegen NA het laden van de lokale
+  // geschiedenis, zodat de cloud-data niet per ongeluk wordt overschreven.
+  await syncCloudGames();
+}
+
+function waitForCloudReady(timeoutMs){
+  return new Promise(resolve=>{
+    if(window.cloudLoadGames) return resolve(true);
+    let done = false;
+    const onReady = ()=>{
+      if(done) return;
+      done = true;
+      window.removeEventListener('firebase-ready', onReady);
+      resolve(true);
+    };
+    window.addEventListener('firebase-ready', onReady);
+    setTimeout(()=>{
+      if(done) return;
+      done = true;
+      window.removeEventListener('firebase-ready', onReady);
+      resolve(!!window.cloudLoadGames);
+    }, timeoutMs || 4000);
+  });
+}
+
+async function syncCloudGames(){
+  const ready = await waitForCloudReady();
+  if(!ready || !window.cloudLoadGames) return;
+  try{
+    const cloudGames = await window.cloudLoadGames();
+    const existingIds = new Set(gameHistory.map(g=>g.cloudId).filter(Boolean));
+    let added = false;
+    cloudGames.forEach(cg=>{
+      if(!existingIds.has(cg.cloudId)){
+        gameHistory.push(cg);
+        added = true;
+      }
+    });
+    if(added){
+      gameHistory.sort((a,b)=> new Date(b.date) - new Date(a.date));
+      refreshRecordHolder();
+      saveGameHistory();
+      if(statsOpen) renderStatsModal();
+      render();
+    }
+  }catch(e){
+    console.error('Kon online ranglijst niet laden', e);
+  }
 }
 
 function toggleExpansion(){
@@ -1606,6 +1655,11 @@ function recordFinishedGame(photo){
   gameHistory.unshift(record);
   if(gameHistory.length > 200) gameHistory.length = 200;
   saveGameHistory();
+  if(window.cloudSaveGame){
+    window.cloudSaveGame(record).then(cloudId=>{
+      if(cloudId){ record.cloudId = cloudId; saveGameHistory(); }
+    });
+  }
 }
 
 function addPlayer(){
@@ -2808,6 +2862,48 @@ els.stopGameBtn.addEventListener('click', stopGame);
 window.addEventListener('resize', renderRoad);
 
 loadState();
+</script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+  import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDR1H5fOJeRQAtW6gIKgHEcjAfv_LqI_W8",
+    authDomain: "carcassonne-scorboard.firebaseapp.com",
+    projectId: "carcassonne-scorboard",
+    storageBucket: "carcassonne-scorboard.firebasestorage.app",
+    messagingSenderId: "222599978705",
+    appId: "1:222599978705:web:95628485fe09e99d26eff0"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const gamesCol = collection(db, "games");
+
+  window.cloudSaveGame = async function(record){
+    try{
+      // foto wordt niet naar de cloud gestuurd (te groot voor Firestore-documenten)
+      const { id, cloudId, photo, ...data } = record;
+      const docRef = await addDoc(gamesCol, data);
+      return docRef.id;
+    }catch(e){
+      console.error("Cloud opslaan mislukt", e);
+      return null;
+    }
+  };
+
+  window.cloudLoadGames = async function(){
+    try{
+      const q = query(gamesCol, orderBy("date", "desc"), limit(200));
+      const snap = await getDocs(q);
+      return snap.docs.map(d => ({ id: d.id, cloudId: d.id, ...d.data() }));
+    }catch(e){
+      console.error("Cloud laden mislukt", e);
+      return [];
+    }
+  };
+
+  window.dispatchEvent(new Event('firebase-ready'));
 </script>
 </body>
 </html>
