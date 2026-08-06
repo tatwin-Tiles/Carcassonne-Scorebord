@@ -1665,6 +1665,7 @@ async function saveGameHistory(){
 }
 
 function recordFinishedGame(photo){
+  showCloudDebug('recordFinishedGame() gestart, cloudSaveGame beschikbaar: ' + !!window.cloudSaveGame);
   const playersSnapshot = state.players.map(p=>({ name: p.name, color: p.color, score: p.score, maxRoad: p.maxRoad||0, maxCity: p.maxCity||0 }));
   if(playersSnapshot.length===0) return;
   const maxScore = Math.max(...playersSnapshot.map(p=>p.score));
@@ -1926,6 +1927,7 @@ function confirmSaveGame(){
     });
   }
   const wasPlayed = state.players.some(p=>p.history.length>0);
+  showCloudDebug('confirmSaveGame: spelers=' + state.players.length + ', wasPlayed=' + wasPlayed + ', historielengtes=[' + state.players.map(p=>p.history.length).join(',') + ']');
   if(wasPlayed) recordFinishedGame(resultsPhoto);
   refreshRecordHolder();
   resultsPhoto = null;
