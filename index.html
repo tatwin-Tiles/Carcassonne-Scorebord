@@ -1683,7 +1683,14 @@ function recordFinishedGame(photo){
   if(gameHistory.length > 200) gameHistory.length = 200;
   saveGameHistory();
   if(window.cloudSaveGame){
+    showCloudDebug('Firestore-aanroep gestart, wachten op antwoord...');
+    let responded = false;
+    const timeoutId = setTimeout(()=>{
+      if(!responded) showCloudDebug('⚠️ GEEN ANTWOORD na 8 seconden — waarschijnlijk blokkeert het netwerk de verbinding naar Firestore (firewall/content-blocker/WiFi-restrictie).');
+    }, 8000);
     window.cloudSaveGame(record).then(cloudId=>{
+      responded = true;
+      clearTimeout(timeoutId);
       if(cloudId){
         record.cloudId = cloudId;
         saveGameHistory();
@@ -1693,6 +1700,8 @@ function recordFinishedGame(photo){
         showCloudDebug('Online opslaan mislukt — ' + errMsg);
       }
     }).catch(err=>{
+      responded = true;
+      clearTimeout(timeoutId);
       console.error('Cloud opslaan gaf een fout', err);
       showCloudDebug('Online opslaan gaf een fout: ' + (err && err.message ? err.message : String(err)));
     });
