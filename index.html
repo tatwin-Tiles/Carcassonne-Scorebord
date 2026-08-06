@@ -1043,6 +1043,13 @@ header .divider{
 
 <div id="modalRoot"></div>
 <div class="toast" id="toast"></div>
+<div id="cloudDebugPanel" style="display:none; position:fixed; top:0; left:0; right:0; z-index:9999; background:#111; color:#0f0; font-family:monospace; font-size:12px; padding:10px 14px; max-height:40vh; overflow-y:auto; border-bottom:3px solid #0f0;">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+    <strong style="color:#0f0;">CLOUD DEBUG LOG</strong>
+    <button id="cloudDebugCloseBtn" style="background:#0f0; color:#000; border:none; padding:4px 10px; border-radius:4px; font-weight:bold;">Sluit</button>
+  </div>
+  <div id="cloudDebugLog"></div>
+</div>
 
 <script>
 const COLORS = {
@@ -1245,6 +1252,25 @@ function showToast(msg){
   clearTimeout(toastTimer);
   toastTimer = setTimeout(()=> els.toast.classList.remove('show'), 2200);
 }
+
+function showCloudDebug(msg){
+  const panel = document.getElementById('cloudDebugPanel');
+  const log = document.getElementById('cloudDebugLog');
+  if(!panel || !log) return;
+  const line = document.createElement('div');
+  const time = new Date().toLocaleTimeString('nl-NL');
+  line.textContent = '[' + time + '] ' + msg;
+  line.style.marginBottom = '4px';
+  log.appendChild(line);
+  panel.style.display = 'block';
+  panel.scrollTop = panel.scrollHeight;
+}
+document.addEventListener('DOMContentLoaded', ()=>{
+  const btn = document.getElementById('cloudDebugCloseBtn');
+  if(btn) btn.addEventListener('click', ()=>{
+    document.getElementById('cloudDebugPanel').style.display = 'none';
+  });
+});
 
 function showFatalError(msg){
   document.getElementById('fatalErrorText').textContent = msg;
@@ -1660,17 +1686,17 @@ function recordFinishedGame(photo){
       if(cloudId){
         record.cloudId = cloudId;
         saveGameHistory();
-        alert('CLOUD DEBUG: Online opgeslagen ✓ (id: ' + cloudId + ')');
+        showCloudDebug('Online opgeslagen ✓ (id: ' + cloudId + ')');
       } else {
         const errMsg = window.__lastCloudError ? (window.__lastCloudError.message || String(window.__lastCloudError)) : 'onbekende reden';
-        alert('CLOUD DEBUG: Online opslaan mislukt — ' + errMsg);
+        showCloudDebug('Online opslaan mislukt — ' + errMsg);
       }
     }).catch(err=>{
       console.error('Cloud opslaan gaf een fout', err);
-      alert('CLOUD DEBUG: Online opslaan gaf een fout: ' + (err && err.message ? err.message : String(err)));
+      showCloudDebug('Online opslaan gaf een fout: ' + (err && err.message ? err.message : String(err)));
     });
   } else {
-    alert('CLOUD DEBUG: Cloud-functie niet beschikbaar (window.cloudSaveGame bestaat niet — Firebase-script is niet geladen)');
+    showCloudDebug('Cloud-functie niet beschikbaar (window.cloudSaveGame bestaat niet — Firebase-script is niet geladen)');
   }
 }
 
@@ -2918,7 +2944,7 @@ loadState();
   };
 
   window.dispatchEvent(new Event('firebase-ready'));
-  alert('CLOUD DEBUG: Firebase-script is geladen en klaar.');
+  if(window.showCloudDebug) window.showCloudDebug('Firebase-script is geladen en klaar.');
 </script>
 </body>
 </html>
