@@ -1550,8 +1550,17 @@ function waitForCloudReady(timeoutMs){
 async function syncCloudGames(){
   const ready = await waitForCloudReady();
   if(!ready || !window.cloudLoadGames) return;
+  showCloudDebug('syncCloudGames: Firestore-LEESaanroep gestart...');
+  const startTime = Date.now();
+  let responded = false;
+  const timeoutId = setTimeout(()=>{
+    if(!responded) showCloudDebug('⚠️ LEZEN: geen antwoord na 8 seconden.');
+  }, 8000);
   try{
     const cloudGames = await window.cloudLoadGames();
+    responded = true;
+    clearTimeout(timeoutId);
+    showCloudDebug('syncCloudGames: LEZEN gelukt ✓ (' + cloudGames.length + ' spellen, ' + (Date.now()-startTime) + 'ms)');
     const existingIds = new Set(gameHistory.map(g=>g.cloudId).filter(Boolean));
     let added = false;
     cloudGames.forEach(cg=>{
@@ -1568,7 +1577,10 @@ async function syncCloudGames(){
       render();
     }
   }catch(e){
+    responded = true;
+    clearTimeout(timeoutId);
     console.error('Kon online ranglijst niet laden', e);
+    showCloudDebug('syncCloudGames: LEZEN mislukt — ' + (e && e.message ? e.message : String(e)));
   }
 }
 
@@ -2959,6 +2971,26 @@ loadState();
 
   window.dispatchEvent(new Event('firebase-ready'));
   if(window.showCloudDebug) window.showCloudDebug('Firebase-script is geladen en klaar.');
+
+  // Directe test buiten de Firebase-SDK om: simpele fetch() naar het echte
+  // Firestore-documentenpad, om te zien of ruwe HTTPS-verzoeken naar dit
+  // specifieke pad wel of niet werken (los van de SDK's eigen verbindingslaag).
+  if(window.showCloudDebug){
+    const testUrl = 'https://firestore.googleapis.com/v1/projects/carcassonne-scorboard/databases/(default)/documents/games?pageSize=1';
+    showCloudDebug('Ruwe fetch-test gestart naar echte Firestore-pad...');
+    const rawStart = Date.now();
+    let rawResponded = false;
+    setTimeout(()=>{
+      if(!rawResponded) showCloudDebug('⚠️ RUWE FETCH: geen antwoord na 8 seconden.');
+    }, 8000);
+    fetch(testUrl).then(r=>{
+      rawResponded = true;
+      showCloudDebug('Ruwe fetch-test: antwoord ontvangen ✓ (status ' + r.status + ', ' + (Date.now()-rawStart) + 'ms)');
+    }).catch(err=>{
+      rawResponded = true;
+      showCloudDebug('Ruwe fetch-test: fout — ' + (err && err.message ? err.message : String(err)));
+    });
+  }
 </script>
 </body>
 </html>
