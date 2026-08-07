@@ -2914,7 +2914,7 @@ loadState();
 </script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-  import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+  import { initializeFirestore, collection, addDoc, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyDR1H5fOJeRQAtW6gIKgHEcjAfv_LqI_W8",
@@ -2926,7 +2926,10 @@ loadState();
   };
 
   const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
+  // experimentalAutoDetectLongPolling: detecteert automatisch of het netwerk
+  // (bijv. sommige mobiele hotspots/providers) de standaard WebChannel-streamverbinding
+  // stilzwijgend blokkeert, en schakelt dan over op long-polling in plaats van te blijven hangen.
+  const db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
   const gamesCol = collection(db, "games");
 
   window.cloudSaveGame = async function(record){
