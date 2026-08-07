@@ -2977,18 +2977,39 @@ loadState();
   // specifieke pad wel of niet werken (los van de SDK's eigen verbindingslaag).
   if(window.showCloudDebug){
     const testUrl = 'https://firestore.googleapis.com/v1/projects/carcassonne-scorboard/databases/(default)/documents/games?pageSize=1';
-    showCloudDebug('Ruwe fetch-test gestart naar echte Firestore-pad...');
+    showCloudDebug('Ruwe GET-fetch-test gestart naar echte Firestore-pad...');
     const rawStart = Date.now();
     let rawResponded = false;
     setTimeout(()=>{
-      if(!rawResponded) showCloudDebug('⚠️ RUWE FETCH: geen antwoord na 8 seconden.');
+      if(!rawResponded) showCloudDebug('⚠️ RUWE GET-FETCH: geen antwoord na 8 seconden.');
     }, 8000);
     fetch(testUrl).then(r=>{
       rawResponded = true;
-      showCloudDebug('Ruwe fetch-test: antwoord ontvangen ✓ (status ' + r.status + ', ' + (Date.now()-rawStart) + 'ms)');
+      showCloudDebug('Ruwe GET-fetch-test: antwoord ontvangen ✓ (status ' + r.status + ', ' + (Date.now()-rawStart) + 'ms)');
     }).catch(err=>{
       rawResponded = true;
-      showCloudDebug('Ruwe fetch-test: fout — ' + (err && err.message ? err.message : String(err)));
+      showCloudDebug('Ruwe GET-fetch-test: fout — ' + (err && err.message ? err.message : String(err)));
+    });
+
+    // Zelfde test maar dan met POST (schrijven) — om te testen of specifiek
+    // het VERSTUREN van data (i.p.v. ophalen) vastloopt op dit netwerk.
+    const postUrl = 'https://firestore.googleapis.com/v1/projects/carcassonne-scorboard/databases/(default)/documents/games';
+    showCloudDebug('Ruwe POST-fetch-test gestart (schrijftest)...');
+    const postStart = Date.now();
+    let postResponded = false;
+    setTimeout(()=>{
+      if(!postResponded) showCloudDebug('⚠️ RUWE POST-FETCH: geen antwoord na 8 seconden — dit bevestigt dat specifiek SCHRIJVEN/VERSTUREN vastloopt op dit netwerk.');
+    }, 8000);
+    fetch(postUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fields: { debugTest: { stringValue: 'ping' } } })
+    }).then(r=>{
+      postResponded = true;
+      showCloudDebug('Ruwe POST-fetch-test: antwoord ontvangen ✓ (status ' + r.status + ', ' + (Date.now()-postStart) + 'ms)');
+    }).catch(err=>{
+      postResponded = true;
+      showCloudDebug('Ruwe POST-fetch-test: fout — ' + (err && err.message ? err.message : String(err)));
     });
   }
 </script>
