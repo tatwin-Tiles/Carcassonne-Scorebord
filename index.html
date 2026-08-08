@@ -2934,7 +2934,7 @@ loadState();
   // aanspreken — dat omzeilt dit probleem volledig.
 
   const PROJECT_ID = "carcassonne-scorboard";
-  const BASE_URL = "https://firestore.googleapis.com/v1/projects/" + PROJECT_ID + "/databases/(default)/documents";
+  const BASE_URL = "https://firestore.googleapis.com/v1/projects/" + PROJECT_ID + "/databases/default/documents";
 
   function toFirestoreValue(v){
     if(v === null || v === undefined) return { nullValue: null };
